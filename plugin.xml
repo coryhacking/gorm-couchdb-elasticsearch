@@ -1,0 +1,15 @@
+<plugin name='gorm-couchdb-elasticsearch' version='0.1' grailsVersion='1.3.7 &gt; *'>
+  <author>Cory Hacking</author>
+  <title>Grails CouchDB ElasticSearch Plugin</title>
+  <description>Integrates CouchDB with ElasticSearch, indexing domain instances using the Couchdb _change feed.</description>
+  <documentation>http://grails.org/plugin/gorm-couchdb-elasticsearch</documentation>
+  <resources>
+    <resource>BuildConfig</resource>
+    <resource>Config</resource>
+    <resource>DataSource</resource>
+    <resource>DefaultCouchdbElasticSearch</resource>
+    <resource>UrlMappings</resource>
+  </resources>
+  <dependencies />
+  <behavior />
+</plugin>
