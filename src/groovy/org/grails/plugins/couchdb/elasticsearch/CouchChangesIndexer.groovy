@@ -576,14 +576,14 @@ class CouchChangesIndexer {
 	private class DaemonThreadFactory implements ThreadFactory {
 
 		private final ThreadFactory factory = Executors.defaultThreadFactory()
-		private final String namePrefix = "couch-changes-indexer"
+		private final String namePrefix = "couch.indexer-"
 		private final List createdThreads = Collections.synchronizedList(new ArrayList())
 
 		public Thread newThread(Runnable r) {
 			Thread thread = factory.newThread(r)
 
 			// add the prefix to our thread name
-			thread.setName(namePrefix + '-' + thread.name)
+			thread.setName((namePrefix + thread.name).replaceAll("-pool-", "-").replaceAll("-thread-", ".").replaceAll("-1.", "-"))
 
 			// set the daemon flag
 			thread.setDaemon(true)
