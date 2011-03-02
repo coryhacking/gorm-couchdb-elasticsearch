@@ -34,7 +34,7 @@ import grails.converters.JSON
  */
 class GormCouchdbElasticsearchGrailsPlugin {
 
-	static final Log log = LogFactory.getLog(GormCouchdbElasticsearchGrailsPlugin.class.name)
+	static final Log log = LogFactory.getLog(GormCouchdbElasticsearchGrailsPlugin.class)
 
 	// the plugin version
 	def version = "0.1"
@@ -145,7 +145,7 @@ class GormCouchdbElasticsearchGrailsPlugin {
 		event.ctx.getBean("elasticSearchCouchdbChangesIndexer").stop()
 
 		// close the ElasticSearch client
-		event.ctx.getBean("elasticSearchClient").close()
+		event.ctx.getBean("elasticSearchClient").client.close()
 
 	}
 
