@@ -13,5 +13,12 @@
   <dependencies>
     <plugin name='gormCouchdb' version='0.9.0 &gt; *' />
   </dependencies>
-  <behavior />
+  <behavior>
+    <method name='getDocument' artefact='CouchDomain' type='org.elasticsearch.search.internal.InternalSearchHit'>
+      <description />
+    </method>
+    <property name='document' type='org.elasticsearch.search.internal.InternalSearchHit' artefact='CouchDomain'>
+      <description />
+    </property>
+  </behavior>
 </plugin>
