@@ -25,6 +25,7 @@ import org.elasticsearch.groovy.client.GClient
 import org.elasticsearch.indices.IndexAlreadyExistsException
 import org.grails.plugins.couchdb.elasticsearch.ElasticSearchContextHolder
 import static org.elasticsearch.client.Requests.clusterHealthRequest
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse
 
 class CouchMappingConfigurator {
 
@@ -137,7 +138,8 @@ class CouchMappingConfigurator {
 			indexMappings.each { String type, Map elasticMapping ->
 
 				log.debug("Setting mapping for [${index}, ${type}] to ${elasticMapping.toString()}.")
-				client.admin.indices.putMapping(new PutMappingRequest(index).ignoreConflicts(true).source(elasticMapping)).actionGet()
+				PutMappingResponse response = client.admin.indices.putMapping(new PutMappingRequest(index).source(elasticMapping)).actionGet()
+				log.debug("Mapping for [${index}, ${type}] ${response.acknowledged ? '' : 'not '}acknowledged.")
 
 			}
 		}

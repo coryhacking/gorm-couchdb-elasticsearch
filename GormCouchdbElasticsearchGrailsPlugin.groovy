@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import grails.converters.JSON
 import grails.util.GrailsUtil
 import org.apache.commons.logging.Log
 import org.apache.commons.logging.LogFactory
@@ -24,9 +25,8 @@ import org.grails.plugins.couchdb.elasticsearch.ElasticSearchContextHolder
 import org.grails.plugins.couchdb.elasticsearch.ElasticSearchGClientFactoryBean
 import org.grails.plugins.couchdb.elasticsearch.ElasticSearchService
 import org.grails.plugins.couchdb.elasticsearch.mapping.CouchMappingConfigurator
-import org.springframework.context.ApplicationContext
 import org.grails.plugins.couchdb.elasticsearch.mapping.CouchSearchableClassMapping
-import grails.converters.JSON
+import org.springframework.context.ApplicationContext
 
 /**
  *
@@ -37,21 +37,21 @@ class GormCouchdbElasticsearchGrailsPlugin {
 	static final Log log = LogFactory.getLog(GormCouchdbElasticsearchGrailsPlugin.class)
 
 	// the plugin version
-	def version = "0.1"
+	def version = "0.2"
 
 	// the version or versions of Grails the plugin is designed for
 	def grailsVersion = "1.3.6 > *"
 
 	// the other plugins this plugin depends on
 	def dependsOn = [
-			'gormCouchdb': "0.9.0 > *"
+		'gormCouchdb': "0.9.0 > *"
 	]
 
 	// resources that are excluded from plugin packaging
 	def pluginExcludes = [
-			"grails-app/controllers/*",
-			"grails-app/views/*",
-			"grails-app/domain/*",
+		"grails-app/controllers/*",
+		"grails-app/views/*",
+		"grails-app/domain/*",
 	]
 
 	def loadAfter = ['services', 'controllers', 'gormCouchdb']

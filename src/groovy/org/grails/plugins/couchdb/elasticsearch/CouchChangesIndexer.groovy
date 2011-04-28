@@ -32,17 +32,12 @@ import org.codehaus.groovy.grails.plugins.couchdb.domain.CouchDomainClass
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequest
 import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.action.get.GetResponse
-import org.elasticsearch.action.search.SearchResponse
-import org.elasticsearch.action.search.SearchType
-import org.elasticsearch.client.Client
 import org.elasticsearch.client.action.bulk.BulkRequestBuilder
+import org.elasticsearch.groovy.client.GClient
 import org.elasticsearch.index.mapper.MapperException
 import org.elasticsearch.indices.IndexAlreadyExistsException
 import org.elasticsearch.indices.IndexMissingException
-import static org.elasticsearch.client.Requests.deleteRequest
-import static org.elasticsearch.client.Requests.indexRequest
-import static org.elasticsearch.index.query.xcontent.QueryBuilders.termQuery
-import org.elasticsearch.groovy.client.GClient
+import static org.elasticsearch.client.Requests.*
 
 /**
  * Process that reads the CouchDB _changes feed and indexes the changes.
@@ -87,11 +82,6 @@ class CouchChangesIndexer {
 				return false
 			}
 
-			// only look at classes that don't have a subclass
-			if (dc.hasSubClasses()) {
-				return false
-			}
-
 			return true
 		}
 
@@ -131,6 +121,16 @@ class CouchChangesIndexer {
 
 			log.info("Opening couchdb _changes stream for [${database}]...")
 
+			// get the list of types for this db
+			def types = searchableCouchDomainClasses.findAll { it.databaseId == dbId }.collect {
+
+				def type = contextHolder.getMappingContextByType(it.clazz).elasticTypeName
+				def i = type.indexOf('.')
+
+				return (i < 0) ? type : type.substring(0, i)
+
+			}.unique()
+
 			// create a queue that will be used to transfer data from the slurper to the indexer
 			LinkedBlockingQueue queue = new LinkedBlockingQueue()
 
@@ -139,7 +139,7 @@ class CouchChangesIndexer {
 			slurperThread.start()
 
 			// create the indexer thread
-			def indexerThread = daemonThreadFactory.newThread(new Indexer(queue, database))
+			def indexerThread = daemonThreadFactory.newThread(new Indexer(queue, database, types))
 			indexerThread.start()
 		}
 	}
@@ -331,19 +331,23 @@ class CouchChangesIndexer {
 	private class Indexer implements Runnable {
 
 		private final bulkTimeout = 500
-		private final bulkSize = 100
+		private final bulkSize = 99
 
 		private final String db
 		private final LinkedBlockingQueue transferQueue
 
 		private final String index
 
-		Indexer(LinkedBlockingQueue queue, String db) {
+		private final List types
+
+		Indexer(LinkedBlockingQueue queue, String db, List types) {
 
 			this.db = db
 			this.transferQueue = queue
 
 			this.index = db
+
+			this.types = types
 		}
 
 		public void run() {
@@ -405,6 +409,11 @@ class CouchChangesIndexer {
 
 						// TODO write to exception queue?
 						log.warn("[${db}] _changes failed to execute bulk request [${response.buildFailureMessage()}].")
+					} else {
+
+						if (bulk.numberOfActions() > 5) {
+							log.info("[${db}] _changes executed ${bulk.numberOfActions()} bulk index actions in ${response.tookInMillis()}ms.")
+						}
 					}
 				} catch (Exception e) {
 					log.warn("[${db}] _changes failed to execute bulk request.", e)
@@ -433,43 +442,16 @@ class CouchChangesIndexer {
 
 				} else if (json.deleted) {
 
-					try {
+					// since the type doesn't come through in the changes feed, create a
+					// delete request for each of our document types
+					types.each {String it ->
 
-						// read the document from the index to get the type
+						bulk.add(deleteRequest(db).type(it).id(id))
 
-						SearchResponse response = client.prepareSearch(db).setSearchType(SearchType.DFS_QUERY_AND_FETCH).setQuery(termQuery("_id", id)).execute().actionGet();
+					}
 
-						if (response.hits.totalHits > 0) {
-							def types = response.hits.collect { it.type }.unique()
-
-							// there should be only one, but just in case
-							if (response.hits.totalHits > 1) {
-								log.warn("[${db}] _changes #${seq}: found [${response.hits.totalHits}] documents with id [${id}] of type [${types.join(',')}].")
-							}
-
-							// create a delete request for each hit (there should be only one)
-							types.each { String it ->
-
-								if (contextHolder.getMappingContext(index, it)) {
-									if (log.isDebugEnabled()) {
-										log.debug("[${db}] _changes #${seq}: deleted [${it}: ${id}].")
-									}
-
-									bulk.add(deleteRequest(db).type(it).id(id))
-								} else {
-									if (log.isTraceEnabled()) {
-										log.trace("[${db}] _changes #${seq}: ignoring deleted [${it}: ${id}].")
-									}
-								}
-							}
-						} else {
-							if (log.isTraceEnabled()) {
-								log.debug("[${db}] _changes #${seq}: ignoring deleted [${id}] because it wasn't found.")
-							}
-						}
-
-					} catch (IndexMissingException e) {
-						// ignore because there's nothing to delete...
+					if (log.isDebugEnabled()) {
+						log.debug("[${db}] _changes #${seq}: deleted [${id}].")
 					}
 
 				} else if (json.doc && type) {
@@ -529,16 +511,16 @@ class CouchChangesIndexer {
 
 		// create the sequence mapping
 		def mapping = [
-				"couchdb": [
-						"properties": [
-								"lastSequenceNo": [
-										"type": "string",
-										"store": "yes",
-										"index": "not_analyzed",
-										"include_in_all": "false"
-								]
-						]
+			"couchdb": [
+				"properties": [
+					"lastSequenceNo": [
+						"type": "string",
+						"store": "yes",
+						"index": "not_analyzed",
+						"include_in_all": "false"
+					]
 				]
+			]
 		]
 
 		log.debug("Setting mapping for [${index}, couchdb] to ${mapping.toString()}].")

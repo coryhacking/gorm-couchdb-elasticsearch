@@ -22,8 +22,16 @@ import org.springframework.util.ClassUtils
 
 public class CouchSearchableClassMapping {
 
+	private static final Set IGNORED_PROPERTIES = new HashSet(["_id", "_rev"])
 	private static final Set SUPPORTED_FORMATS = new HashSet(["string", "integer", "long", "float", "double", "boolean", "null", "date"])
 	private static final Class JODA_TIME
+
+	static {
+		try {
+			JODA_TIME = Class.forName("org.joda.time.ReadableInstant")
+		} catch (ClassNotFoundException e) {
+		}
+	}
 
 	private ConfigObject esConfig
 
@@ -36,13 +44,6 @@ public class CouchSearchableClassMapping {
 	 * Owning domain class
 	 */
 	private CouchDomainClass domainClass
-
-	static {
-		try {
-			JODA_TIME = Class.forName("org.joda.time.ReadableInstant")
-		} catch (ClassNotFoundException e) {
-		}
-	}
 
 	private boolean all = true
 	private String indexName
@@ -100,11 +101,16 @@ public class CouchSearchableClassMapping {
 		def elasticTypeMappingProperties = [:]
 
 		if (!isAll()) {
-			elasticTypeMappingProperties["_all"] = ["enabled": false]
+			elasticTypeMappingProperties["_all"] = [enabled: false]
 		}
 
 		// Map each domain properties in supported format, or object for complex type
-		propertiesMapping.each {CouchSearchablePropertyMapping scpm ->
+		propertiesMapping.each { CouchSearchablePropertyMapping scpm ->
+
+			// some properties are just ignored...
+			if (IGNORED_PROPERTIES.contains(scpm.jsonPropertyName)) {
+				return
+			}
 
 			def propOptions = [:]
 
