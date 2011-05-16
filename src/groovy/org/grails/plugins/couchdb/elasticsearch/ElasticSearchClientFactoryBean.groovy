@@ -17,9 +17,11 @@ package org.grails.plugins.couchdb.elasticsearch
 
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.transport.TransportClient
+import org.elasticsearch.common.settings.ImmutableSettings
+import org.elasticsearch.common.settings.Settings.Builder
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 import org.springframework.beans.factory.FactoryBean
-import static org.elasticsearch.node.NodeBuilder.nodeBuilder
+import static org.elasticsearch.node.NodeBuilder.*
 
 class ElasticSearchClientFactoryBean implements FactoryBean {
 
@@ -43,16 +45,22 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 			throw new IllegalArgumentException("Invalid client mode, expected values were ${SUPPORTED_MODES}.")
 		}
 
+		// get the name of the cluster
+		def clusterName = contextHolder.config.cluster.name as String
+
 		def nb = nodeBuilder()
 		def transportClient = null
 
 		switch (clientMode) {
-			case 'local':
-				nb.local(true)
-				break
-
 			case 'transport':
-				transportClient = new TransportClient()
+
+				// used to store our settings
+				Builder settings = ImmutableSettings.settingsBuilder();
+				if (clusterName) {
+					settings.put("cluster.name", clusterName)
+				}
+
+				transportClient = new TransportClient(settings.build())
 				if (!contextHolder.config.client.hosts) {
 					transportClient.addTransportAddress(new InetSocketTransportAddress('localhost', 9300))
 				} else {
@@ -60,24 +68,27 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 						transportClient.addTransportAddress(new InetSocketTransportAddress(it.host, it.port))
 					}
 				}
+
+				return transportClient
+
+			case 'local':
+				nb.local(true)
 				break
 
 			case 'node':
 				nb.client(true)
 				break
+
 		}
 
-		if (transportClient) {
-			return transportClient
+		// set the cluster name
+		nb.clusterName(clusterName)
 
-		} else {
+		// Avoiding this:
+		// http://groups.google.com/a/elasticsearch.com/group/users/browse_thread/thread/2bb5d8dd6dd9b80b/e7db9e63fc305133?show_docid=e7db9e63fc305133&fwc=1
+		def client = nb.node().client()
 
-			// Avoiding this:
-			// http://groups.google.com/a/elasticsearch.com/group/users/browse_thread/thread/2bb5d8dd6dd9b80b/e7db9e63fc305133?show_docid=e7db9e63fc305133&fwc=1
-			def client = nb.node().client()
-
-			return client
-		}
+		return client
 	}
 
 	Class getObjectType() {

@@ -32,6 +32,12 @@ elasticSearch {
 	 */
 	defaultExcludedProperties = ["password"]
 
+	/**
+ 	 * define the cluster name using "cluster.name", e.g.
+	 *
+	 * 	cluster.name = "cluster1"
+	 *
+	 */
 }
 
 environments {

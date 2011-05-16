@@ -28,8 +28,8 @@ grails.project.dependency.resolution = {
         // specify dependencies here under either 'build', 'compile', 'runtime', 'test' or 'provided' scopes eg.
 
         // runtime 'mysql:mysql-connector-java:5.1.13'
-		runtime 'org.elasticsearch:elasticsearch:0.16.0'
-		runtime 'org.elasticsearch:elasticsearch-lang-groovy:0.16.0'
+		runtime 'org.elasticsearch:elasticsearch:0.16.1'
+		runtime 'org.elasticsearch:elasticsearch-lang-groovy:0.16.1'
 
     }
 }
