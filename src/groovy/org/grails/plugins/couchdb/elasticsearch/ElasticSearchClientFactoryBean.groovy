@@ -49,7 +49,6 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 		def clusterName = contextHolder.config.cluster.name as String
 
 		def nb = nodeBuilder()
-		def transportClient = null
 
 		switch (clientMode) {
 			case 'transport':
@@ -60,7 +59,7 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 					settings.put("cluster.name", clusterName)
 				}
 
-				transportClient = new TransportClient(settings.build())
+				def transportClient = new TransportClient(settings.build())
 				if (!contextHolder.config.client.hosts) {
 					transportClient.addTransportAddress(new InetSocketTransportAddress('localhost', 9300))
 				} else {
