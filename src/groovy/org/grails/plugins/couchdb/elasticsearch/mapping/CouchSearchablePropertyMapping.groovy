@@ -25,7 +25,7 @@ import org.codehaus.groovy.grails.commons.GrailsClassUtils
  */
 public class CouchSearchablePropertyMapping {
 
-	public static final Set<String> SEARCHABLE_MAPPING_OPTIONS = new HashSet<String>(Arrays.asList("boost", "index", "type", "term_vector"))
+	public static final Set<String> SEARCHABLE_MAPPING_OPTIONS = new HashSet<String>(Arrays.asList("boost", "index", "type", "term_vector", "analyzer"))
 	public static final Set<String> SEARCHABLE_SPECIAL_MAPPING_OPTIONS = new HashSet<String>(Arrays.asList("excludeFromAll"))
 
 	/**

@@ -138,7 +138,7 @@ class CouchMappingConfigurator {
 			indexMappings.each { String type, Map elasticMapping ->
 
 				log.debug("Setting mapping for [${index}, ${type}] to ${elasticMapping.toString()}.")
-				PutMappingResponse response = client.admin.indices.putMapping(new PutMappingRequest(index).source(elasticMapping)).actionGet()
+				PutMappingResponse response = client.admin.indices.putMapping(new PutMappingRequest(index).type(type).source(elasticMapping)).actionGet()
 				log.debug("Mapping for [${index}, ${type}] ${response.acknowledged ? '' : 'not '}acknowledged.")
 
 			}
