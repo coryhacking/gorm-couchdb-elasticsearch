@@ -15,15 +15,16 @@
  */
 package org.grails.plugins.couchdb.elasticsearch
 
-import org.elasticsearch.client.Client
+import org.apache.log4j.Logger
 import org.elasticsearch.client.transport.TransportClient
 import org.elasticsearch.common.settings.ImmutableSettings
-import org.elasticsearch.common.settings.Settings.Builder
 import org.elasticsearch.common.transport.InetSocketTransportAddress
 import org.springframework.beans.factory.FactoryBean
 import static org.elasticsearch.node.NodeBuilder.*
 
 class ElasticSearchClientFactoryBean implements FactoryBean {
+
+	private static final log = Logger.getLogger(ElasticSearchClientFactoryBean)
 
 	private static final SUPPORTED_MODES = ['local', 'transport', 'node']
 
@@ -37,29 +38,46 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 		contextHolder
 	}
 
-	Object getObject() {
+	def node
 
+	Object getObject() {
 		// Retrieve client mode, default is "node"
 		def clientMode = contextHolder.config.client.mode ?: 'node'
 		if (!(clientMode in SUPPORTED_MODES)) {
 			throw new IllegalArgumentException("Invalid client mode, expected values were ${SUPPORTED_MODES}.")
 		}
 
-		// get the name of the cluster
-		def clusterName = contextHolder.config.cluster.name as String
-
 		def nb = nodeBuilder()
 
+		// Cluster name
+		if (contextHolder.config.cluster.name) {
+			nb.clusterName(contextHolder.config.cluster.name)
+		}
+
+		// Path to the data folder of ES
+		def dataPath = contextHolder.config.path.data
+		if (dataPath) {
+			nb.settings.put('path.data', dataPath as String)
+			log.info "Using ElasticSearch data path: ${dataPath}"
+		}
+
+		// Configure the client based on the client mode
 		switch (clientMode) {
 			case 'transport':
 
-				// used to store our settings
-				Builder settings = ImmutableSettings.settingsBuilder();
-				if (clusterName) {
-					settings.put("cluster.name", clusterName)
+				def settings = ImmutableSettings.settingsBuilder()
+
+				// Use the "sniff" feature of transport client ?
+				if (contextHolder.config.client.transport.sniff) {
+					settings.put("client.transport.sniff", true)
+				}
+				if (contextHolder.config.cluster.name) {
+					settings.put('cluster.name', contextHolder.config.cluster.name.toString())
 				}
 
-				def transportClient = new TransportClient(settings.build())
+				def transportClient = new TransportClient(settings)
+
+				// Configure transport addresses
 				if (!contextHolder.config.client.hosts) {
 					transportClient.addTransportAddress(new InetSocketTransportAddress('localhost', 9300))
 				} else {
@@ -67,34 +85,53 @@ class ElasticSearchClientFactoryBean implements FactoryBean {
 						transportClient.addTransportAddress(new InetSocketTransportAddress(it.host, it.port))
 					}
 				}
-
 				return transportClient
+				break
 
 			case 'local':
+				// Determines how the data is store (on disk, in memory, ...)
+				def storeType = contextHolder.config.index.store.type
+				if (storeType) {
+					nb.settings().put('index.store.type', storeType as String)
+					log.debug "Local ElasticSearch client with store type of ${storeType} configured."
+				} else {
+					log.debug "Local ElasticSearch client with default store type configured."
+				}
+				def queryParsers = contextHolder.config.index.queryparser
+				if (queryParsers) {
+					queryParsers.each { type, clz ->
+						nb.settings().put("index.queryparser.types.${type}".toString(), clz)
+					}
+				}
 				nb.local(true)
 				break
 
 			case 'node':
+			default:
 				nb.client(true)
 				break
-
 		}
-
-		// set the cluster name
-		nb.clusterName(clusterName)
-
 		// Avoiding this:
-		// http://groups.google.com/a/elasticsearch.com/group/users/browse_thread/thread/2bb5d8dd6dd9b80b/e7db9e63fc305133?show_docid=e7db9e63fc305133&fwc=1
-		def client = nb.node().client()
-
+		node = nb.node()
+		def client = node.client()
+		// Wait for the cluster to become alive.
+		//            log.info "Waiting for ElasticSearch GREEN status."
+		//            client.admin().cluster().health(new ClusterHealthRequest().waitForGreenStatus()).actionGet()
 		return client
 	}
 
 	Class getObjectType() {
-		Client
+		return org.elasticsearch.client.Client
 	}
 
 	boolean isSingleton() {
-		true
+		return true
+	}
+
+	def shutdown() {
+		if (contextHolder.config.client.mode == 'local' && node) {
+			log.info "Stopping embedded ElasticSearch."
+			node.close()		// close() seems to be more appropriate than stop()
+		}
 	}
 }

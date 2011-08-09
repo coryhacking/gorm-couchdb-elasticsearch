@@ -20,38 +20,79 @@ import org.grails.plugins.couchdb.elasticsearch.mapping.CouchSearchableClassMapp
 
 class ElasticSearchContextHolder {
 
-	ConfigObject config
+    /**
+     * The configuration of the ElasticSearch plugin
+     */
+    ConfigObject config
 
+    /**
+     * A map containing the mapping to ElasticSearch
+     */
 	private Map<String, CouchSearchableClassMapping> mapping = [:].asSynchronized()
 
 	private Set<String> indicesSet = new HashSet().asSynchronized()
 	private String[] indices = null
 
-	public void addMappingContext(CouchSearchableClassMapping scm) {
+    /**
+     * Adds a mapping context to the current mapping holder
+     *
+     * @param scm The SearchableClassMapping instance to add
+     */
+    public void addMappingContext(CouchSearchableClassMapping scm) {
 		if (!indicesSet.contains(scm.indexName)) {
 			indicesSet.add(scm.indexName)
 			indices = indicesSet as String[]
 		}
 
 		mapping[scm.indexName + '.' + scm.elasticTypeName] = scm
-	}
+    }
 
-	CouchSearchableClassMapping getMappingContext(String index, String type) {
+    /**
+     * Returns the mapping context for a peculiar type
+	 * @param index
+     * @param type
+     * @return
+     */
+    CouchSearchableClassMapping getMappingContext(String index, String type) {
 		mapping[index + '.' + type]
 	}
 
-	CouchSearchableClassMapping getMappingContext(String index, CouchDomainClass domainClass) {
+    /**
+     * Returns the mapping context for a peculiar GrailsDomainClass
+	 * @param index
+     * @param domainClass
+     * @return
+     */
+    CouchSearchableClassMapping getMappingContext(String index, CouchDomainClass domainClass) {
 		mapping[index + '.' + domainClass.documentType]
 	}
 
-	CouchSearchableClassMapping getMappingContextByType(Class clazz) {
-		mapping.values().find { scm -> scm.domainClass.clazz == clazz }
-	}
+    /**
+     * Returns the mapping context for a peculiar Class
+     *
+     * @param clazz
+     * @return
+     */
+    CouchSearchableClassMapping getMappingContextByType(Class clazz) {
+        mapping.values().find { scm -> scm.domainClass.clazz == clazz }
+    }
 
-	def isRootClass(Class clazz) {
-		mapping.values().any { scm -> scm.domainClass.clazz == clazz && scm.root }
-	}
+    /**
+     * Determines if a Class is root-mapped by the ElasticSearch plugin
+     *
+     * @param clazz
+     * @return A boolean determining if the class is root-mapped or not
+     */
+    def isRootClass(Class clazz) {
+        mapping.values().any { scm -> scm.domainClass.clazz == clazz && scm.root }
+    }
 
+    /**
+     * Returns the Class that is associated to a specific elasticSearch type
+     *
+     * @param elasticTypeName
+     * @return A Class instance or NULL if the class was not found
+     */
 	Class findMappedClassByElasticType(String index, String elasticTypeName) {
 		mapping.values().find { scm -> scm.indexName == index && scm.elasticTypeName == elasticTypeName }?.domainClass?.clazz
 	}
