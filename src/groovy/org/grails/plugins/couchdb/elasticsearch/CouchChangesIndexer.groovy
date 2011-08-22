@@ -15,7 +15,6 @@
  */
 package org.grails.plugins.couchdb.elasticsearch
 
-import grails.converters.JSON
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadFactory
@@ -37,6 +36,8 @@ import org.elasticsearch.groovy.client.GClient
 import org.elasticsearch.index.mapper.MapperException
 import org.elasticsearch.indices.IndexAlreadyExistsException
 import org.elasticsearch.indices.IndexMissingException
+import org.grails.plugins.couchdb.elasticsearch.mapping.CouchSearchableClassMapping
+import org.svenson.JSONParser
 import static org.elasticsearch.client.Requests.*
 
 /**
@@ -427,7 +428,7 @@ class CouchChangesIndexer {
 
 			// do something useful with the response
 			try {
-				def json = JSON.parse(s)
+				def json = JSONParser.defaultJSONParser().parse(s)
 
 				seq = json.seq
 
@@ -461,16 +462,15 @@ class CouchChangesIndexer {
 					def docType = (i < 0) ? type : type.substring(0, i)
 
 					// check to make sure this document should be indexed
-					if (contextHolder.getMappingContext(index, docType)) {
+					CouchSearchableClassMapping scm = contextHolder.getMappingContext(index, docType)
+					if (scm) {
 
 						if (log.isDebugEnabled()) {
 							log.debug("[${db}] _changes #${seq}: changed [${type}: ${id}].")
 						}
 
-						// get just the document
-						def doc = json.doc
-
-						def source = new JSON(doc).toString()
+						// convert the document to JSON using svenson so that special characters are escaped properly
+						def source = scm.domainClass.clazz.couchdb.jsonConfig.getJsonGenerator().forValue(json.doc)
 
 						// add this index request to the bulk requests
 						bulk.add(indexRequest(index).type(docType).id(id).source(source))
