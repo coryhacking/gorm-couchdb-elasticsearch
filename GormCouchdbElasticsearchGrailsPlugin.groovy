@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import grails.converters.JSON
 import grails.util.GrailsUtil
 import org.apache.commons.logging.Log
 import org.apache.commons.logging.LogFactory
@@ -37,7 +36,7 @@ class GormCouchdbElasticsearchGrailsPlugin {
 	static final Log log = LogFactory.getLog(GormCouchdbElasticsearchGrailsPlugin.class)
 
 	// the plugin version
-	def version = "0.6"
+	def version = "0.7"
 
 	// the version or versions of Grails the plugin is designed for
 	def grailsVersion = "1.3.6 > *"
@@ -117,7 +116,7 @@ class GormCouchdbElasticsearchGrailsPlugin {
 				return null
 			}
 
-			scm.domainClass.clazz.parse(delegate.sourceAsMap() as JSON)
+			scm.domainClass.clazz.parse(delegate.sourceAsString())
 		}
 	}
 
