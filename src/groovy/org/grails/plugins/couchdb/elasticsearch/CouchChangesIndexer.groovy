@@ -457,12 +457,8 @@ class CouchChangesIndexer {
 
 				} else if (json.doc && type) {
 
-					// get the base document type
-					def i = type.indexOf('.')
-					def docType = (i < 0) ? type : type.substring(0, i)
-
 					// check to make sure this document should be indexed
-					CouchSearchableClassMapping scm = contextHolder.getMappingContext(index, docType)
+					CouchSearchableClassMapping scm = contextHolder.getMappingContext(index, type)
 					if (scm) {
 
 						if (log.isDebugEnabled()) {
@@ -471,6 +467,10 @@ class CouchChangesIndexer {
 
 						// convert the document to JSON using svenson so that special characters are escaped properly
 						def source = scm.domainClass.clazz.couchdb.jsonConfig.getJsonGenerator().forValue(json.doc)
+
+						// get the base document type
+						def i = type.indexOf('.')
+						def docType = (i < 0) ? type : type.substring(0, i)
 
 						// add this index request to the bulk requests
 						bulk.add(indexRequest(index).type(docType).id(id).source(source))
